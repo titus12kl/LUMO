@@ -1,6 +1,14 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Linking,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 const stations = [
   {
@@ -10,6 +18,8 @@ const stations = [
     available: true,
     type: "DC Fast",
     power: 120,
+    latitude: 19.4326,
+    longitude: -99.1332,
   },
   {
     id: "2",
@@ -18,8 +28,35 @@ const stations = [
     available: false,
     type: "Level 2",
     power: 22,
+    latitude: 19.4361,
+    longitude: -99.2036,
   },
 ];
+
+async function openDirections(lat: number, lng: number) {
+  // Web fallback (siempre funciona)
+  const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+
+  // Android Google Maps (app)
+  const googleMapsAndroid = `google.navigation:q=${lat},${lng}`;
+
+  // iOS Apple Maps (app)
+  const appleMapsIOS = `http://maps.apple.com/?daddr=${lat},${lng}`;
+
+  try {
+    if (Platform.OS === "android") {
+      const can = await Linking.canOpenURL(googleMapsAndroid);
+      if (can) return Linking.openURL(googleMapsAndroid);
+      return Linking.openURL(webUrl);
+    } else {
+      const canApple = await Linking.canOpenURL(appleMapsIOS);
+      if (canApple) return Linking.openURL(appleMapsIOS);
+      return Linking.openURL(webUrl);
+    }
+  } catch {
+    Alert.alert("Error", "No se pudo abrir Maps.");
+  }
+}
 
 export default function StationDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -66,7 +103,20 @@ export default function StationDetail() {
 
         <Text style={styles.label}>Price</Text>
         <Text style={styles.value}>${station.price} / kWh</Text>
+
+        <Text style={styles.label}>Availability</Text>
+        <Text style={styles.value}>
+          {station.available ? "Available" : "Occupied"}
+        </Text>
       </View>
+
+      <TouchableOpacity
+        style={[styles.secondaryButton, charging && { opacity: 0.5 }]}
+        disabled={charging}
+        onPress={() => openDirections(station.latitude, station.longitude)}
+      >
+        <Text style={styles.secondaryButtonText}>Dirigirte</Text>
+      </TouchableOpacity>
 
       {charging && (
         <View style={styles.sessionBox}>
@@ -79,7 +129,11 @@ export default function StationDetail() {
       )}
 
       <TouchableOpacity
-        style={styles.button}
+        style={[
+          styles.button,
+          !station.available && !charging ? { opacity: 0.5 } : null,
+        ]}
+        disabled={!station.available && !charging}
         onPress={() => {
           if (charging) {
             setCharging(false);
@@ -133,6 +187,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  secondaryButton: {
+    marginTop: 16,
+    backgroundColor: "#1C2333",
+    padding: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#2C364D",
+  },
+  secondaryButtonText: {
+    color: "#00E0FF",
+    fontWeight: "bold",
+  },
   sessionBox: {
     marginTop: 25,
     padding: 20,
@@ -145,7 +212,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   button: {
-    marginTop: 30,
+    marginTop: 18,
     backgroundColor: "#00E0FF",
     padding: 15,
     borderRadius: 10,
