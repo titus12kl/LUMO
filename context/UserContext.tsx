@@ -4,13 +4,15 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 type User = {
   name: string;
   email: string;
+  password: string;
   photo?: string | null;
 };
 
 type UserContextType = {
   user: User | null;
-  register: (data: User) => void;
-  logout: () => void;
+  register: (data: User) => Promise<void>;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   loading: boolean;
 };
 
@@ -25,25 +27,39 @@ export const UserProvider = ({ children }: any) => {
   }, []);
 
   const loadUser = async () => {
-    const stored = await AsyncStorage.getItem("user");
-    if (stored) {
-      setUser(JSON.parse(stored));
-    }
+    const stored = await AsyncStorage.getItem("currentUser");
+    if (stored) setUser(JSON.parse(stored));
     setLoading(false);
   };
 
   const register = async (data: User) => {
+    await AsyncStorage.setItem("registeredUser", JSON.stringify(data));
+    await AsyncStorage.setItem("currentUser", JSON.stringify(data));
     setUser(data);
-    await AsyncStorage.setItem("user", JSON.stringify(data));
+  };
+
+  const login = async (email: string, password: string) => {
+    const stored = await AsyncStorage.getItem("registeredUser");
+    if (!stored) return false;
+
+    const parsed: User = JSON.parse(stored);
+
+    if (parsed.email === email && parsed.password === password) {
+      await AsyncStorage.setItem("currentUser", JSON.stringify(parsed));
+      setUser(parsed);
+      return true;
+    }
+
+    return false;
   };
 
   const logout = async () => {
+    await AsyncStorage.removeItem("currentUser");
     setUser(null);
-    await AsyncStorage.removeItem("user");
   };
 
   return (
-    <UserContext.Provider value={{ user, register, logout, loading }}>
+    <UserContext.Provider value={{ user, register, login, logout, loading }}>
       {children}
     </UserContext.Provider>
   );

@@ -7,6 +7,7 @@ export default function RootLayout() {
     <UserProvider>
       <SessionProvider>
         <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="login" />
           <Stack.Screen name="register" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="station/[id]" />

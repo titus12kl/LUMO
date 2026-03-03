@@ -10,7 +10,7 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     await logout();
-    router.replace("/register");
+    router.replace("/login");
   };
 
   return (
