@@ -13,6 +13,7 @@ type UserContextType = {
   register: (data: User) => Promise<void>;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  updateUser: (updates: Partial<User>) => Promise<void>;
   loading: boolean;
 };
 
@@ -27,9 +28,12 @@ export const UserProvider = ({ children }: any) => {
   }, []);
 
   const loadUser = async () => {
-    const stored = await AsyncStorage.getItem("currentUser");
-    if (stored) setUser(JSON.parse(stored));
-    setLoading(false);
+    try {
+      const stored = await AsyncStorage.getItem("currentUser");
+      if (stored) setUser(JSON.parse(stored));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const register = async (data: User) => {
@@ -53,13 +57,32 @@ export const UserProvider = ({ children }: any) => {
     return false;
   };
 
+  const updateUser = async (updates: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      return { ...prev, ...updates };
+    });
+
+    // Persistir cambios (cuenta registrada + sesión actual)
+    const current = await AsyncStorage.getItem("currentUser");
+    const baseUser: User | null = current ? JSON.parse(current) : null;
+    if (!baseUser) return;
+
+    const merged: User = { ...baseUser, ...updates };
+
+    await AsyncStorage.setItem("registeredUser", JSON.stringify(merged));
+    await AsyncStorage.setItem("currentUser", JSON.stringify(merged));
+  };
+
   const logout = async () => {
     await AsyncStorage.removeItem("currentUser");
     setUser(null);
   };
 
   return (
-    <UserContext.Provider value={{ user, register, login, logout, loading }}>
+    <UserContext.Provider
+      value={{ user, register, login, logout, updateUser, loading }}
+    >
       {children}
     </UserContext.Provider>
   );
