@@ -1,13 +1,13 @@
+import * as ExpoLocation from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Alert,
   Linking,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 const stations = [
@@ -33,28 +33,26 @@ const stations = [
   },
 ];
 
-async function openDirections(lat: number, lng: number) {
-  // Web fallback (siempre funciona)
-  const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
-
-  // Android Google Maps (app)
-  const googleMapsAndroid = `google.navigation:q=${lat},${lng}`;
-
-  // iOS Apple Maps (app)
-  const appleMapsIOS = `http://maps.apple.com/?daddr=${lat},${lng}`;
-
+async function openDirections(destLat: number, destLng: number) {
   try {
-    if (Platform.OS === "android") {
-      const can = await Linking.canOpenURL(googleMapsAndroid);
-      if (can) return Linking.openURL(googleMapsAndroid);
-      return Linking.openURL(webUrl);
-    } else {
-      const canApple = await Linking.canOpenURL(appleMapsIOS);
-      if (canApple) return Linking.openURL(appleMapsIOS);
-      return Linking.openURL(webUrl);
+    const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permiso requerido",
+        "Activa la ubicación para generar la ruta automática.",
+      );
+      return;
     }
+
+    const loc = await ExpoLocation.getCurrentPositionAsync({});
+    const originLat = loc.coords.latitude;
+    const originLng = loc.coords.longitude;
+
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${originLat},${originLng}&destination=${destLat},${destLng}&travelmode=driving`;
+
+    await Linking.openURL(url);
   } catch {
-    Alert.alert("Error", "No se pudo abrir Maps.");
+    Alert.alert("Error", "No se pudo abrir la navegación.");
   }
 }
 
